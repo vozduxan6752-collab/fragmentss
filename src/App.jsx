@@ -1,23 +1,16 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
-const url = import.meta.env.VITE_SUPABASE_URL
-const key = import.meta.env.VITE_SUPABASE_ANON_KEY
+const URL = 'https://eyaexwhktlshxrxwyios.supabase.co'
+const KEY = 'sb_publishable_X-HntrYRakqxRJWoQmHP_g_H440SSYI'
 
-let supabase = null
-let initError = null
-try {
-  if (url && key) supabase = createClient(url, key)
-} catch (e) {
-  initError = e.message
-}
+const supabase = createClient(URL, KEY)
 
 export default function App() {
   const [lots, setLots] = useState([])
   const [err, setErr] = useState(null)
 
   useEffect(() => {
-    if (!supabase) return
     supabase
       .from('auctions')
       .select('id, current_bid, start_price, ends_at, usernames(name)')
@@ -28,21 +21,10 @@ export default function App() {
       })
   }, [])
 
-  if (!supabase) {
-    return (
-      <div style={{ padding: 16, fontFamily: 'sans-serif' }}>
-        <h3>Проблема с настройкой</h3>
-        <p>URL: {url ? 'есть' : 'НЕТ'}</p>
-        <p>KEY: {key ? 'есть' : 'НЕТ'}</p>
-        {initError && <p>Ошибка: {initError}</p>}
-      </div>
-    )
-  }
-
   return (
     <div style={{ padding: 16, fontFamily: 'sans-serif' }}>
       <h2>Маркет юзернеймов</h2>
-      {err && <p style={{ color: 'red' }}>Ошибка базы: {err}</p>}
+      {err && <p style={{ color: 'red' }}>Ошибка: {err}</p>}
       {!err && lots.length === 0 && <p>Лотов пока нет</p>}
       {lots.map((l) => (
         <div key={l.id} style={{ border: '1px solid #ccc', borderRadius: 8, padding: 12, marginBottom: 8 }}>
@@ -53,4 +35,4 @@ export default function App() {
       ))}
     </div>
   )
-        }
+}
