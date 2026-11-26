@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { supabase, BRAND } from './config.js'
 import { createClient } from '@supabase/supabase-js'
 import Sell from './Sell.jsx'
 
