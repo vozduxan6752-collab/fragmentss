@@ -11,7 +11,7 @@ const css = `
 body{margin:0;background:#0b0f14;color:#e8edf2;font-family:-apple-system,Roboto,sans-serif}
 .w{max-width:520px;margin:auto;padding:14px}
 .hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
-.logo{font-size:20px;font-weight:800;letter-spacing:.3px}
+.logo{font-size:20px;font-weight:800}
 .bal{background:#17202b;border-radius:18px;padding:6px 12px;font-size:14px}
 .tabs{display:flex;gap:8px;margin-bottom:12px}
 .tab{flex:1;text-align:center;padding:9px;border-radius:10px;background:#131a22;color:#7d8a98;font-size:14px}
@@ -48,4 +48,101 @@ export default function App() {
   const [, tick] = useState(0)
 
   async function load() {
-    const { d
+    const { data: p } = await supabase.from('profiles').select('*').single()
+    setMe(p)
+    const { data } = await supabase.from('auctions')
+      .select('id,current_bid,start_price,ends_at,usernames(name)')
+      .eq('status', 'active')
+    setLots(data || [])
+  }
+
+  useEffect(() => {
+    (async () => {
+      const tg = window.Telegram?.WebApp
+      if (!tg?.initData) return setStatus('Открой сайт через бота в Telegram')
+      tg.ready(); tg.expand()
+      try {
+        const r = await fetch(URL + '/functions/v1/swift-action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: KEY },
+          body: JSON.stringify({ initData: tg.initData }),
+        })
+        const j = await r.json()
+        if (!j.session) throw new Error(j.error || 'нет сессии')
+        await supabase.auth.setSession({
+          access_token: j.session.access_token,
+          refresh_token: j.session.refresh_token,
+        })
+        await load()
+        setStatus('ok')
+      } catch (e) { setStatus('Ошибка входа: ' + e.message) }
+    })()
+    const a = setInterval(() => tick((x) => x + 1), 1000)
+    const b = setInterval(() => load().catch(() => {}), 15000)
+    return () => { clearInterval(a); clearInterval(b) }
+  }, [])
+
+  async function bid(l) {
+    const min = l.current_bid ? Math.ceil(l.current_bid * 1.05) : l.start_price
+    const { error } = await supabase.rpc('place_bid', { p_auction: l.id, p_amount: min })
+    setMsg({ ...msg, [l.id]: error ? error.message : '' })
+    await load()
+  }
+
+  if (status !== 'ok') return <><style>{css}</style><div className="w">{status}</div></>
+
+  const price = (l) => l.current_bid ?? l.start_price
+  const list = lots
+    .filter((l) => l.usernames?.name.includes(q.toLowerCase().replace('@', '')))
+    .sort((a, b) => sort === 'time'
+      ? new Date(a.ends_at) - new Date(b.ends_at)
+      : sort === 'asc' ? price(a) - price(b) : price(b) - price(a))
+
+  return (
+    <>
+      <style>{css}</style>
+      <div className="w">
+        <div className="hd">
+          <span className="logo">MARKET</span>
+          <span className="bal">💎 {me?.balance - me?.held}</span>
+        </div>
+        <div className="tabs">
+          <div className={'tab' + (tab === 'list' ? ' on' : '')} onClick={() => setTab('list')}>Юзернеймы</div>
+          <div className={'tab' + (tab === 'sell' ? ' on' : '')} onClick={() => setTab('sell')}>Продать</div>
+          <div className="tab">Подарки</div>
+        </div>
+
+        {tab === 'sell' && (
+          <Sell supabase={supabase} meId={me?.id}
+            onDone={() => { load(); setTab('list') }} />
+        )}
+
+        {tab === 'list' && (
+          <div>
+            <input className="srch" placeholder="Поиск юзернейма" value={q}
+              onChange={(e) => setQ(e.target.value)} />
+            <div className="chips">
+              {[['time', 'Скоро закончатся'], ['asc', 'Цена ↑'], ['desc', 'Цена ↓']].map(([k, t]) => (
+                <div key={k} className={'chip' + (sort === k ? ' on' : '')} onClick={() => setSort(k)}>{t}</div>
+              ))}
+            </div>
+            {list.length === 0 && <p style={{ color: '#7d8a98' }}>Ничего не найдено</p>}
+            {list.map((l) => (
+              <div className="row" key={l.id}>
+                <div>
+                  <div className="nm">@{l.usernames?.name}</div>
+                  <div className="st"><b>● Аукцион</b> · {left(l.ends_at)}</div>
+                  {msg[l.id] && <div className="er">{msg[l.id]}</div>}
+                </div>
+                <div className="pr">
+                  <div className="pv">💎 {price(l)}</div>
+                  <button className="bt" onClick={() => bid(l)}>Ставка</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  )
+}
