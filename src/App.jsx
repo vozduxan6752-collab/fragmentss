@@ -21,7 +21,7 @@ export default function App() {
       }
       tg.ready()
       try {
-        const r = await fetch(URL + '/functions/v1/tg-auth', {
+        const r = await fetch(URL + '/functions/v1/swift-action', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', apikey: KEY },
           body: JSON.stringify({ initData: tg.initData }),
