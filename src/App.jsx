@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
 const URL = 'https://eyaexwhktlshxrxwyios.supabase.co'
-const KEY = 'ВСТАВЬ_КЛЮЧ'
+const KEY = 'sb_publishable_X-HntrYRakqxRJWoQmHP_g_H440SSYI'
 const supabase = createClient(URL, KEY)
 
 const css = `
